@@ -26,4 +26,15 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                 AND LOWER(se.name) LIKE LOWER(CONCAT('%', :name, '%'))
             """)
     List<Object[]> searchReport(String minDate, String maxDate, String name);
+
+    @Query(nativeQuery = true, value = """
+                SELECT
+                    se.name AS sellerName,
+                    SUM(s.amount) AS total
+                FROM tb_sales s
+                JOIN tb_seller se ON s.seller_id = se.id
+                WHERE s.date BETWEEN :minDate AND :maxDate
+                GROUP BY se.name
+            """)
+    List<Object[]> summaryReport(String minDate, String maxDate);
 }

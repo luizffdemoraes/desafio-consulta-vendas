@@ -3,11 +3,13 @@ package com.devsuperior.dsmeta.services;
 import com.devsuperior.dsmeta.dto.ContentDTO;
 import com.devsuperior.dsmeta.dto.ReportDTO;
 import com.devsuperior.dsmeta.dto.SaleMinDTO;
+import com.devsuperior.dsmeta.dto.SummaryDTO;
 import com.devsuperior.dsmeta.repositories.SaleRepository;
 import com.devsuperior.dsmeta.services.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -53,5 +55,29 @@ public class SaleService {
                 .collect(Collectors.toList());
 
         return new ReportDTO(contents);
+    }
+
+    public List<SummaryDTO> summaryReport(String minDate, String maxDate) {
+        // Data atual do sistema
+        LocalDate today = LocalDate.ofInstant(Instant.now(), ZoneId.systemDefault());
+
+        // Validar e processar maxDate
+        String validMaxDate = (maxDate == null || maxDate.isBlank())
+                ? today.toString()
+                : LocalDate.parse(maxDate).toString();
+
+        // Validar e processar minDate
+        String validMinDate = (minDate == null || minDate.isBlank())
+                ? LocalDate.parse(validMaxDate).minusYears(1L).toString()
+                : LocalDate.parse(minDate).toString();
+
+        List<Object[]> result = repository.summaryReport(validMinDate, validMaxDate);
+
+        return result.stream()
+                .map(row -> new SummaryDTO(
+                        (String) row[0],                    // sellerName
+                        ((BigDecimal) row[1]).doubleValue() // total
+                ))
+                .collect(Collectors.toList());
     }
 }

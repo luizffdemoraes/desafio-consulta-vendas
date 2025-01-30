@@ -1,12 +1,13 @@
 package com.devsuperior.dsmeta.services;
 
-import com.devsuperior.dsmeta.dto.ContentDTO;
 import com.devsuperior.dsmeta.dto.ReportDTO;
 import com.devsuperior.dsmeta.dto.SaleMinDTO;
 import com.devsuperior.dsmeta.dto.SummaryDTO;
 import com.devsuperior.dsmeta.repositories.SaleRepository;
 import com.devsuperior.dsmeta.services.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -29,32 +30,17 @@ public class SaleService {
                 .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado para o ID.: " + id));
     }
 
-    public ReportDTO searchReport(String minDate, String maxDate, String name) {
+    public Page<ReportDTO> searchReport(String minDate, String maxDate, String name, Pageable pageable) {
         // Data atual do sistema
-        LocalDate today = LocalDate.ofInstant(Instant.now(), ZoneId.systemDefault());
+        LocalDate today = getToday();
 
         // Validar e processar maxDate
-        String validMaxDate = (maxDate == null || maxDate.isBlank())
-                ? today.toString()
-                : LocalDate.parse(maxDate).toString();
+        LocalDate validMaxDate = getMaxDate(maxDate, today);
 
         // Validar e processar minDate
-        String validMinDate = (minDate == null || minDate.isBlank())
-                ? LocalDate.parse(validMaxDate).minusYears(1L).toString()
-                : LocalDate.parse(minDate).toString();
+        LocalDate validMinDate = getMinDate(minDate, validMaxDate);
 
-        List<Object[]> result = repository.searchReport(validMinDate, validMaxDate, name);
-
-        List<ContentDTO> contents = result.stream()
-                .map(row -> new ContentDTO(
-                        ((BigInteger) row[0]).longValue(),      // id
-                        ((java.sql.Date) row[1]).toLocalDate(), // date
-                        (Double) row[2],                        // amount
-                        (String) row[3]                         // sellerName
-                ))
-                .collect(Collectors.toList());
-
-        return new ReportDTO(contents);
+        return repository.searchReport(validMinDate, validMaxDate, name, pageable);
     }
 
     public List<SummaryDTO> summaryReport(String minDate, String maxDate) {
@@ -79,5 +65,19 @@ public class SaleService {
                         ((BigDecimal) row[1]).doubleValue() // total
                 ))
                 .collect(Collectors.toList());
+    }
+
+    private static LocalDate getToday() {
+        return LocalDate.ofInstant(Instant.now(), ZoneId.systemDefault());
+    }
+
+    private static LocalDate getMinDate(String minDate, LocalDate validMaxDate) {
+        return getMaxDate(minDate, (validMaxDate.minusYears(1L)));
+    }
+
+    private static LocalDate getMaxDate(String maxDate, LocalDate today) {
+        return (maxDate == null || maxDate.isBlank())
+                ? today
+                : LocalDate.parse(maxDate);
     }
 }

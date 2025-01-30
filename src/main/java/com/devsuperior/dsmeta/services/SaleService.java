@@ -10,13 +10,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class SaleService {
@@ -45,26 +42,15 @@ public class SaleService {
 
     public List<SummaryDTO> summaryReport(String minDate, String maxDate) {
         // Data atual do sistema
-        LocalDate today = LocalDate.ofInstant(Instant.now(), ZoneId.systemDefault());
+        LocalDate today = getToday();
 
         // Validar e processar maxDate
-        String validMaxDate = (maxDate == null || maxDate.isBlank())
-                ? today.toString()
-                : LocalDate.parse(maxDate).toString();
+        LocalDate validMaxDate = getMaxDate(maxDate, today);
 
         // Validar e processar minDate
-        String validMinDate = (minDate == null || minDate.isBlank())
-                ? LocalDate.parse(validMaxDate).minusYears(1L).toString()
-                : LocalDate.parse(minDate).toString();
+        LocalDate validMinDate = getMinDate(minDate, validMaxDate);
 
-        List<Object[]> result = repository.summaryReport(validMinDate, validMaxDate);
-
-        return result.stream()
-                .map(row -> new SummaryDTO(
-                        (String) row[0],                    // sellerName
-                        ((BigDecimal) row[1]).doubleValue() // total
-                ))
-                .collect(Collectors.toList());
+        return repository.summaryReport(validMinDate, validMaxDate);
     }
 
     private static LocalDate getToday() {
